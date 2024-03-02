@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 # from watchlist_app.api.views import movie_list, movie_details
 from watchlist_app.api.views import WatchListAV, WatchDetailAV, StreamListAV, StreamDetailAV, ReviewList,ReviewDetail,ReviewCreate
@@ -12,6 +12,8 @@ urlpatterns = [
     path('stream/<int:pk>/review-create', ReviewCreate.as_view(), name = 'review-create'),
     path('stream/<int:pk>/review', ReviewList.as_view(), name = 'stream-details'),
     path('stream/review/<int:pk>', ReviewDetail.as_view(), name = 'review-details'),
+    
+    path('api-auth/', include('rest_framework.urls')),
 
     # path('review/', ReviewList.as_view(), name ="reviews"),
     # path('review/<int:pk>', ReviewDetail.as_view(), name ="review-details"),

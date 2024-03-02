@@ -11,8 +11,8 @@ from .models import WatchList
 from .serializers import WatchListSerializer
 
 
-###WatchDetailAV
-##This view provides endpoints to retrieve, update, and delete individual watchlists.
+# WatchDetailAV
+## This view provides endpoints to retrieve, update, and delete individual watchlists.
 
 class WatchListAV(APIView):
     def get(self, request):
@@ -28,8 +28,8 @@ class WatchListAV(APIView):
         else:
             return Response(serializer.errors)
 
-###WatchDetailAV
-#This view provides endpoints to retrieve, update, and delete individual watchlists.
+## WatchDetailAV
+# This view provides endpoints to retrieve, update, and delete individual watchlists.
 
 class WatchDetailAV(APIView):
     def get(self, request, pk):
@@ -246,3 +246,95 @@ class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ReviewSerializer  
 
 
+# token authentication
+
+open settings.py and write :
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
+
+create new app user_app and create folder named api then create three files:
+serializers.py, urls.py and views.py
+
+open views.py write :
+
+```Python
+from rest_framework.decorators import api_view
+from user_app.api.serializers import RegistrationSerializer
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+
+from user_app import models 
+
+@api_view(['POST',])
+def registration_view(request):
+    if request.method == 'POST':
+        serializer = RegistrationSerializer(data = request.data)
+
+        data = {}
+        if serializer.is_valid():
+            account = serializer.save()
+
+            data['response'] = "Registration Successful"
+            data['username'] = account.username
+            data['email'] = account.email
+            token = Token.objects.get(user=account).key
+            data['token'] = token
+        else:
+            data = serializer.errors
+
+        return Response(data)
+
+open serializers.py write :
+
+```python 
+from django.contrib.auth.models import User
+from rest_framework import serializers
+
+class RegistrationSerializer(serializers.ModelSerializer):
+    password2 = serializers.CharField(style = {'input_type': 'password'}, write_only=True) 
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'password2']
+        extra_kwargs = {
+            'password':{'write_only':True}
+            }
+        
+    def save(self):
+        password = self.validated_data['password']
+        password2 = self.validated_data['password2']
+
+        if password != password2:
+            raise serializers.ValidationError({'error':'password1 and password2 must be the same'})
+        
+        if User.objects.filter(email=self.validated_data['email']).exists():
+            raise serializers.ValidationError({'error':'email already exists'})
+        account = User(email=self.validated_data['email'], username=self.validated_data['username'])
+        account.set_password(password)
+        account.save()
+
+        return account
+
+open urls.py write
+```python
+
+urlpatterns = [
+    path('login/', obtain_auth_token, name = 'login'),
+    path('register/', registration_view, name ='register'),
+]
+
+open user_app.models.py file and write:
+```python
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
+
+@receiver(post_save, sender = settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance = None, created =False, **kwargs):
+    if created:
+        Token.objects.create(user = instance)
